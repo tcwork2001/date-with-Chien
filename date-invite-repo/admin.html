@@ -1,0 +1,375 @@
+<title>Date RSVP Log</title>
+<meta name="description" content="Private log of everyone who has answered the date invite, pulled from your Google Sheet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #fff3f7;
+    --surface: #ffffff;
+    --surface-2: #ffe3ee;
+    --line: #f6c9db;
+    --text: #3d1226;
+    --text-dim: #8a5a6d;
+    --accent: #ff3e86;
+    --accent-ink: #ffffff;
+    --good: #1f8a5f;
+    --good-bg: #e4f6ee;
+    --radius: 18px;
+    --radius-sm: 12px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  h1,h2{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 700;
+    line-height: 1.08;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  #app{
+    max-width: 640px;
+    margin: 0 auto;
+    padding-block: 44px;
+  }
+
+  .top{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+
+  .eyebrow{
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1{ font-size: clamp(1.7rem, 5vw, 2.2rem); }
+
+  .refresh-btn{
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    color: var(--text);
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    border-radius: 999px;
+    padding: 11px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .refresh-btn:hover{ border-color: var(--accent); }
+  .refresh-btn:disabled{ opacity: 0.5; cursor: default; }
+
+  .stat-row{
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .stat-tile{
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .stat-tile .n{
+    font-family: "Fraunces", serif;
+    font-weight: 800;
+    font-size: 1.8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-tile .l{
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .entry-list{ display: flex; flex-direction: column; gap: 10px; }
+
+  .entry{
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .entry.newest{ border-color: var(--accent); }
+
+  .entry-top{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .entry-when{
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .new-badge{
+    background: var(--good-bg);
+    color: var(--good);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .entry-fields{
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .entry-field .l{
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .entry-field .v{
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .state-card{
+    background: var(--surface);
+    border: 1.5px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 26px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    font-size: 0.92rem;
+  }
+  .state-card strong{ color: var(--text); }
+  .state-card code{
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.85em;
+  }
+  .state-card ol{ margin: 10px 0 0; padding-left: 20px; }
+  .state-card li{ margin-bottom: 6px; }
+
+  .spin{
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 6px;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  @media (prefers-reduced-motion: reduce){
+    .spin{ animation: none; }
+  }
+</style>
+
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Must match the values in your deployed Apps Script (apps-script.gs).
+  var WEBHOOK_URL = "";
+  var ADMIN_KEY = "xY4UB_cNghprpffIUod3TB3C";
+
+  var state = { loading: false, error: null, rows: null };
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  function fmtWhen(iso){
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var now = new Date();
+    var diffMs = now - d;
+    var abs = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
+    if (diffMs >= 0 && diffMs < 60000) return "just now · " + abs;
+    if (diffMs >= 0 && diffMs < 3600000) return Math.floor(diffMs/60000) + "m ago · " + abs;
+    return abs;
+  }
+
+  function jsonp(url, timeoutMs){
+    return new Promise(function(resolve, reject){
+      var cbName = "__rsvpAdminCb" + Math.random().toString(36).slice(2);
+      var script = document.createElement("script");
+      var done = false;
+
+      function cleanup(){
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = function(data){
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = function(){
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("network"));
+      };
+
+      setTimeout(function(){
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("timeout"));
+      }, timeoutMs || 8000);
+
+      var sep = url.indexOf("?") === -1 ? "?" : "&";
+      script.src = url + sep + "callback=" + cbName;
+      document.head.appendChild(script);
+    });
+  }
+
+  function load(){
+    if (!WEBHOOK_URL){ render(); return; }
+    state.loading = true;
+    state.error = null;
+    render();
+
+    var url = WEBHOOK_URL + (WEBHOOK_URL.indexOf("?") === -1 ? "?" : "&") + "key=" + encodeURIComponent(ADMIN_KEY);
+    jsonp(url).then(function(data){
+      state.loading = false;
+      if (data && data.status === "ok"){
+        state.rows = data.rows || [];
+      } else {
+        state.error = (data && data.message) || "unexpected_response";
+      }
+      render();
+    }).catch(function(err){
+      state.loading = false;
+      state.error = err.message || "network";
+      render();
+    });
+  }
+
+  function renderSetupCard(){
+    return (
+      '<div class="state-card">' +
+        '<strong>Not connected to a Google Sheet yet.</strong><br><br>' +
+        'This page needs the same <code>WEBHOOK_URL</code> you paste into the date-invite page’s code, added here too.' +
+        '<ol>' +
+          '<li>Finish deploying the Apps Script Web App (see README.md).</li>' +
+          '<li>Open this admin page’s code, find <code>var WEBHOOK_URL = "";</code> near the top, and paste your Web app URL between the quotes.</li>' +
+          '<li>Republish — this page will start showing responses automatically.</li>' +
+        '</ol>' +
+      '</div>'
+    );
+  }
+
+  function renderError(){
+    var msg = state.error === "unauthorized"
+      ? "The admin key here doesn’t match the one in your Apps Script. Make sure ADMIN_KEY is identical in both files."
+      : "Couldn’t reach the Google Sheet right now (" + escapeHtml(state.error) + "). Try refreshing in a moment.";
+    return '<div class="state-card"><strong>Couldn’t load responses.</strong><br><br>' + msg + '</div>';
+  }
+
+  function renderEmpty(){
+    return '<div class="state-card">No one has answered yet — once someone finishes the “pick a time” flow, their choice will show up here.</div>';
+  }
+
+  function renderEntries(rows){
+    var sorted = rows.slice().sort(function(a,b){
+      return new Date(b.receivedAt) - new Date(a.receivedAt);
+    });
+    return '<div class="entry-list">' + sorted.map(function(r, i){
+      return '<div class="entry' + (i === 0 ? ' newest' : '') + '">' +
+        '<div class="entry-top">' +
+          '<span class="entry-when">' + escapeHtml(fmtWhen(r.receivedAt)) + '</span>' +
+          (i === 0 ? '<span class="new-badge">Latest</span>' : '') +
+        '</div>' +
+        '<div class="entry-fields">' +
+          '<div class="entry-field"><span class="l">Day</span><span class="v">' + escapeHtml(r.day || "—") + '</span></div>' +
+          '<div class="entry-field"><span class="l">Time</span><span class="v">' + escapeHtml(r.time || "—") + '</span></div>' +
+          '<div class="entry-field"><span class="l">Plan</span><span class="v">' + escapeHtml(r.activity || "—") + '</span></div>' +
+        '</div>' +
+      '</div>';
+    }).join("") + '</div>';
+  }
+
+  function render(){
+    var body;
+    if (!WEBHOOK_URL){
+      body = renderSetupCard();
+    } else if (state.error){
+      body = renderError();
+    } else if (state.loading && state.rows === null){
+      body = '<div class="state-card"><span class="spin"></span>Loading responses…</div>';
+    } else if (state.rows && state.rows.length === 0){
+      body = renderEmpty();
+    } else if (state.rows){
+      body = renderEntries(state.rows);
+    } else {
+      body = renderEmpty();
+    }
+
+    var count = state.rows ? state.rows.length : 0;
+
+    document.getElementById("app").innerHTML =
+      '<div class="top">' +
+        '<div><div class="eyebrow">Private · just for you</div><h1>Who said yes?</h1></div>' +
+        '<button class="refresh-btn" id="refreshBtn"' + (state.loading ? ' disabled' : '') + '>' +
+          (state.loading ? '<span class="spin"></span>Refreshing' : '↻ Refresh') +
+        '</button>' +
+      '</div>' +
+      (WEBHOOK_URL ? (
+        '<div class="stat-row">' +
+          '<div class="stat-tile"><span class="n">' + count + '</span><span class="l">Response' + (count === 1 ? '' : 's') + '</span></div>' +
+        '</div>'
+      ) : '') +
+      body;
+
+    var btn = document.getElementById("refreshBtn");
+    if (btn) btn.addEventListener("click", load);
+  }
+
+  render();
+  if (WEBHOOK_URL) load();
+})();
+</script>
