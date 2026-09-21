@@ -5,11 +5,10 @@ plan-the-date screen (day, time, activity), ending on a confirmation
 screen the recipient can copy and send back. A separate private admin
 page lets you see every response.
 
-Live pages (already hosted, shareable now — you still need to hit
-Share → enable link on the first one for the other person to open it):
+Live pages (hosted on GitHub Pages straight from this repo, no Claude account needed to open them):
 
-- Date invite (public, send this one): https://claude.ai/artifact/E9dmsoNaZiuwPQFK7fHY1p
-- RSVP log (private, only you should open this one): https://claude.ai/artifact/5q94WyPHex9xpDxbtymEHA
+- Date invite (public, send this one): https://tcwork2001.github.io/date-with-Chien/
+- RSVP log (private, only you should open this one): https://tcwork2001.github.io/date-with-Chien/admin.html
 
 This folder is the source, for anyone who wants their own copy on
 GitHub / their own hosting.
