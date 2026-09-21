@@ -1,5 +1,5 @@
 <title>Date RSVP Log</title>
-<meta name="description" content="Private log of everyone who has answered the date invite, pulled from your Google Sheet.">
+<meta name="description" content="Private log of everyone who has answered the date invite, pulled from GitHub Issues on your repo.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -206,9 +206,10 @@
 (function(){
   "use strict";
 
-  // Must match the values in your deployed Apps Script (apps-script.gs).
-  var WEBHOOK_URL = "";
-  var ADMIN_KEY = "xY4UB_cNghprpffIUod3TB3C";
+  // Reads responses straight from GitHub Issues on your own repo — no
+  // webhook, no Google Sheet, nothing to deploy. Public repo issues can be
+  // read with no token, so this page needs no secret of its own.
+  var GITHUB_REPO = "tcwork2001/date-with-Chien";
 
   var state = { loading: false, error: null, rows: null };
 
@@ -229,84 +230,48 @@
     return abs;
   }
 
-  function jsonp(url, timeoutMs){
-    return new Promise(function(resolve, reject){
-      var cbName = "__rsvpAdminCb" + Math.random().toString(36).slice(2);
-      var script = document.createElement("script");
-      var done = false;
-
-      function cleanup(){
-        delete window[cbName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cbName] = function(data){
-        if (done) return;
-        done = true;
-        cleanup();
-        resolve(data);
-      };
-
-      script.onerror = function(){
-        if (done) return;
-        done = true;
-        cleanup();
-        reject(new Error("network"));
-      };
-
-      setTimeout(function(){
-        if (done) return;
-        done = true;
-        cleanup();
-        reject(new Error("timeout"));
-      }, timeoutMs || 8000);
-
-      var sep = url.indexOf("?") === -1 ? "?" : "&";
-      script.src = url + sep + "callback=" + cbName;
-      document.head.appendChild(script);
-    });
+  function parseField(body, label){
+    if (!body) return "";
+    var re = new RegExp("\\*\\*" + label + ":\\*\\*\\s*(.+)");
+    var m = body.match(re);
+    return m ? m[1].trim() : "";
   }
 
   function load(){
-    if (!WEBHOOK_URL){ render(); return; }
     state.loading = true;
     state.error = null;
     render();
 
-    var url = WEBHOOK_URL + (WEBHOOK_URL.indexOf("?") === -1 ? "?" : "&") + "key=" + encodeURIComponent(ADMIN_KEY);
-    jsonp(url).then(function(data){
-      state.loading = false;
-      if (data && data.status === "ok"){
-        state.rows = data.rows || [];
-      } else {
-        state.error = (data && data.message) || "unexpected_response";
-      }
-      render();
-    }).catch(function(err){
-      state.loading = false;
-      state.error = err.message || "network";
-      render();
-    });
-  }
-
-  function renderSetupCard(){
-    return (
-      '<div class="state-card">' +
-        '<strong>Not connected to a Google Sheet yet.</strong><br><br>' +
-        'This page needs the same <code>WEBHOOK_URL</code> you paste into the date-invite page’s code, added here too.' +
-        '<ol>' +
-          '<li>Finish deploying the Apps Script Web App (see README.md).</li>' +
-          '<li>Open this admin page’s code, find <code>var WEBHOOK_URL = "";</code> near the top, and paste your Web app URL between the quotes.</li>' +
-          '<li>Republish — this page will start showing responses automatically.</li>' +
-        '</ol>' +
-      '</div>'
-    );
+    var url = "https://api.github.com/repos/" + GITHUB_REPO + "/issues?state=all&per_page=100&labels=rsvp";
+    fetch(url, { headers: { "Accept": "application/vnd.github+json" } })
+      .then(function(r){
+        if (!r.ok) throw new Error("http_" + r.status);
+        return r.json();
+      })
+      .then(function(issues){
+        state.loading = false;
+        state.rows = issues.map(function(issue){
+          return {
+            receivedAt: issue.created_at,
+            day: parseField(issue.body, "Day"),
+            time: parseField(issue.body, "Time"),
+            activity: parseField(issue.body, "Activity"),
+            url: issue.html_url
+          };
+        });
+        render();
+      })
+      .catch(function(err){
+        state.loading = false;
+        state.error = err.message || "network";
+        render();
+      });
   }
 
   function renderError(){
-    var msg = state.error === "unauthorized"
-      ? "The admin key here doesn’t match the one in your Apps Script. Make sure ADMIN_KEY is identical in both files."
-      : "Couldn’t reach the Google Sheet right now (" + escapeHtml(state.error) + "). Try refreshing in a moment.";
+    var msg = state.error === "http_404"
+      ? "Repo not found — check that GITHUB_REPO at the top of this page's code is correct and the repo is public."
+      : "Couldn’t reach GitHub right now (" + escapeHtml(state.error) + "). Try refreshing in a moment.";
     return '<div class="state-card"><strong>Couldn’t load responses.</strong><br><br>' + msg + '</div>';
   }
 
@@ -335,9 +300,7 @@
 
   function render(){
     var body;
-    if (!WEBHOOK_URL){
-      body = renderSetupCard();
-    } else if (state.error){
+    if (state.error){
       body = renderError();
     } else if (state.loading && state.rows === null){
       body = '<div class="state-card"><span class="spin"></span>Loading responses…</div>';
@@ -358,11 +321,9 @@
           (state.loading ? '<span class="spin"></span>Refreshing' : '↻ Refresh') +
         '</button>' +
       '</div>' +
-      (WEBHOOK_URL ? (
-        '<div class="stat-row">' +
-          '<div class="stat-tile"><span class="n">' + count + '</span><span class="l">Response' + (count === 1 ? '' : 's') + '</span></div>' +
-        '</div>'
-      ) : '') +
+      '<div class="stat-row">' +
+        '<div class="stat-tile"><span class="n">' + count + '</span><span class="l">Response' + (count === 1 ? '' : 's') + '</span></div>' +
+      '</div>' +
       body;
 
     var btn = document.getElementById("refreshBtn");
@@ -370,6 +331,6 @@
   }
 
   render();
-  if (WEBHOOK_URL) load();
+  load();
 })();
 </script>
