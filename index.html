@@ -523,34 +523,28 @@
 
   var state = { screen: "ask", day: "", time: "", activity: null, customActivity: "", noHits: 0 };
 
-  // Responses are logged as GitHub Issues on this repo, using a token scoped
-  // ONLY to "Issues: Read and write" on this one repo. See admin.html to view them.
-  var GITHUB_REPO = "tcwork2001/date-with-Chien";
-  var GITHUB_TOKEN ="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"
+// Responses are sent to a Formspree form (formspree.io). No secret token
+  // needed — this endpoint is safe to leave in public client-side code.
+  // View submissions at https://formspree.io (email notification + dashboard).
+  var FORMSPREE_ENDPOINT = "https://formspree.io/f/xrpbpylr";
 
   function submitResponse(){
-    if (!GITHUB_TOKEN) return;
     try{
       var act = getActivityDisplay();
       var day = formatDateLong(state.day);
       var time = formatTime12(state.time);
       var activity = act ? act.label : "";
-      var title = "RSVP: " + (day || "?") + (time ? " at " + time : "");
-      var body = [
-        "**Day:** " + (day || "—"),
-        "**Time:** " + (time || "—"),
-        "**Activity:** " + (activity || "—"),
-        "**Submitted at:** " + new Date().toISOString()
-      ].join("\n");
 
-      fetch("https://api.github.com/repos/" + GITHUB_REPO + "/issues", {
+      fetch(FORMSPREE_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Authorization": "Bearer " + GITHUB_TOKEN,
-          "Accept": "application/vnd.github+json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title: title, body: body, labels: ["rsvp"] })
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _subject: "RSVP: " + (day || "?") + (time ? " at " + time : ""),
+          day: day || "—",
+          time: time || "—",
+          activity: activity || "—",
+          submittedAt: new Date().toISOString()
+        })
       }).catch(function(){});
     } catch(err){}
   }
